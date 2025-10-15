@@ -18,7 +18,7 @@ import { Task } from './task/task.entity';
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: 'db.sqlite',
-      entities: [User, Task], // ✅ explicitly register entities
+      entities: [User, Task],
       synchronize: true,
     }),
     AuthModule,

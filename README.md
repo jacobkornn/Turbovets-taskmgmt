@@ -1,101 +1,143 @@
-# Turbovets
+# Task Management System
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+This project was developed as part of a full-stack coding challenge to demonstrate secure role-based access control (RBAC), JWT authentication, and modular monorepo architecture using **NestJS**, **React (Vite)**, and **Nx**.  
+It is a working application designed to show practical full-stack development skills, scalable structure, and thoughtful security design.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+---
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/nest?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## Setup Instructions
 
-## Run tasks
+1. **Clone and install**
+   ```bash
+   git clone <your-repo-url>
+   cd task-management-system
+   npm install
+   ```
 
-To run the dev server for your app, use:
+2. **Environment setup**  
+   Create a `.env` file in the **project root**:
+   ```bash
+   JWT_SECRET=supersecretkey123
+   ```
+   The backend uses a local SQLite database (`db.sqlite`) located in the project root that gets created automatically.  
+   No additional configuration is required.
 
-```sh
-npx nx serve api
+3. **Run the project**
+   ```bash
+   npm start
+   ```
+   - Backend API: http://localhost:3000  
+   - Frontend App: http://localhost:5173  
+   (The root `package.json` script runs both using Nx and Concurrently.)
+
+---
+
+## Architecture Overview
+
+### Monorepo Layout
+```
+apps/
+ ├── api/                     # NestJS backend
+ │   └── src/
+ │       ├── auth/            # JWT authentication and guards
+ │       ├── user/            # User entity, controller, and service
+ │       └── task/            # Task entity and CRUD operations
+ └── frontend/                # React + Vite frontend
+     ├── src/
+     │   ├── components/      # Reusable UI components
+     │   │   ├── Dashboard.jsx
+     │   │   ├── Login.jsx
+     │   │   ├── CreateAccount.jsx
+     └── index.html
 ```
 
-To create a production bundle:
+### Rationale
+- **Nx** provides consistent tooling and shared TypeScript configuration for both apps.  
+- **NestJS** organizes the backend by feature (auth, user, task) for modularity.  
+- **React (Vite)** powers the frontend with a fast, modern build system.  
+- **SQLite** offers zero-setup persistence while using TypeORM to maintain production-ready structure.  
+- `npm start` runs both services concurrently for simple development flow.
 
-```sh
-npx nx build api
-```
+---
 
-To see all available targets to run for a project, run:
+## Access Control Design & Data Models
 
-```sh
-npx nx show project api
-```
+### Role Hierarchy
+| Role  | Level | Description |
+|-------|--------|-------------|
+| Owner | 3 | Full authority over the system and all users |
+| Admin | 2 | Manage users and tasks within their organization |
+| Viewer | 1 | Base role, limited to assigned or created tasks |
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+This numeric hierarchy allows higher roles to inherit lower-level permissions:  
+**Owner (3) > Admin (2) > Viewer (1)**
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Role enforcement is centralized through a custom NestJS guard that compares the user’s role level against the required role level for each route.
 
-## Add new projects
+### Data Models
 
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
+**User**
+- `id` (integer, PK)  
+- `username` (string)  
+- `password` (hashed)  
+- `role` (enum: viewer, admin, owner)
 
-Use the plugin's generator to create new projects.
+**Task**
+- `id` (integer, PK)  
+- `title` (string)  
+- `description` (string)  
+- `createdBy` (foreign key → User)  
+- `assignedTo` (foreign key → User)
 
-To generate a new application, use:
+Access control ensures only the task creator, assignee, or privileged roles (Admin/Owner) can modify tasks.
 
-```sh
-npx nx g @nx/nest:app demo
-```
+---
 
-To generate a new library, use:
+## Sample API Requests & Responses
 
-```sh
-npx nx g @nx/node:lib mylib
-```
+**Authentication**
+- `POST /auth/signup` — Register a new user  
+- `POST /auth/login` — Return a JWT access token  
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+**Users**
+- `GET /users` — List users (Admin/Owner only)  
+- `POST /users/promote` — Promote a user’s role  
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+**Tasks**
+- `POST /tasks` — Create a new task  
+- `GET /tasks` — Fetch tasks accessible to the current user  
+- `PUT /tasks/:id` — Update if the user has ownership or elevated role  
 
-## Set up CI!
+All protected routes require a valid JWT.
 
-### Step 1
+---
 
-To connect to Nx Cloud, run the following command:
+## Future Enhancements
 
-```sh
-npx nx connect
-```
+**Security**
+- Add refresh tokens and token rotation  
+- Implement CSRF protection and rate limiting  
+- Integrate Helmet, stricter CORS, and request validation  
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+**Scalability**
+- Migrate to PostgreSQL for production concurrency  
+- Cache RBAC checks and sessions with Redis  
+- Add audit logging for sensitive actions  
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+**Extended Features**
+- Organization-level ownership and delegated roles  
+- Multi-tenant separation  
+- Frontend filtering, pagination, and user management enhancements  
 
-### Step 2
+---
 
-Use the following command to configure a CI workflow for your workspace:
+## Summary
 
-```sh
-npx nx g ci-workflow
-```
+This project demonstrates:
+- Secure JWT authentication and hierarchical RBAC  
+- Clean Nx monorepo architecture for backend and frontend  
+- TypeORM integration with SQLite for simple persistence  
+- A functional React (Vite) frontend tied directly to a NestJS API  
+- A codebase designed for maintainability, scalability, and clarity
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/nx-api/nest?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Built to emphasize both **technical execution** and **architectural design quality** in a full-stack environment.
