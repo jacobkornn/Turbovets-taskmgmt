@@ -1,146 +1,279 @@
-# Task Management System
+# 🧠 Secure Task Management System
 
-This project was developed as part of a full-stack coding challenge to demonstrate secure role-based access control (RBAC), JWT authentication, and modular monorepo architecture using **NestJS**, **React (Vite)**, and **Nx**.  
-It is a working application designed to show practical full-stack development skills, scalable structure, and thoughtful security design.
-
----
-
-## Setup Instructions
-
-1. **Clone and install**
-   ```bash
-   git clone <your-repo-url>
-   cd task-management-system
-   npm install
-   ```
-
-2. **Environment setup**  
-   Create a `.env` file in the **project root**:
-   ```bash
-   JWT_SECRET=supersecretkey123
-   ```
-   The backend uses a local SQLite database (`db.sqlite`) located in the project root that gets created automatically.  
-   No additional configuration is required.
-
-3. **Run the project**
-   ```bash
-   npm start
-   ```
-   - Backend API: http://localhost:3000  
-   - Frontend App: http://localhost:5173  
-   (The root `package.json` script runs both using Nx and Concurrently.)
+A full-stack web application implementing **Role-Based Access Control (RBAC)** for secure task management across organizations.  
+Built as a modular **Nx monorepo** using **NestJS + React + SQLite**, the system demonstrates clean architecture, secure JWT authentication, and fine-grained authorization.
 
 ---
 
-## Architecture Overview
+## ⚙️ Setup Instructions
 
-### Monorepo Layout
+### 1️⃣ Install Dependencies
+```bash
+npm install
+```
+
+### 2️⃣ Environment Variables
+Create `.env` files for both apps.
+
+**apps/api/.env**
+```
+JWT_SECRET=supersecret
+DATABASE_URL=sqlite://./db.sqlite
+PORT=3000
+```
+
+**apps/dashboard/.env**
+```
+VITE_API_URL=http://localhost:3000
+```
+
+### 3️⃣ Start the Backend
+```bash
+npx nx serve api
+```
+This runs the NestJS server on `http://localhost:3000`.
+
+### 4️⃣ Start the Frontend
+```bash
+npx nx serve dashboard
+```
+This runs the React (Vite) dashboard on `http://localhost:5173`.
+
+### 5️⃣ Default Seeded Data
+- **Users**: `owner`, `admin`, `viewer`
+- **Orgs**: `ParentOrg` with children `OrgA`, `OrgB`
+- Password for all: `password`
+
+---
+
+## 🏗️ Architecture Overview
+
+### 🧩 Monorepo Layout
 ```
 apps/
- ├── api/                     # NestJS backend
- │   └── src/
- │       ├── auth/            # JWT authentication and guards
- │       ├── user/            # User entity, controller, and service
- │       └── task/            # Task entity and CRUD operations
- └── frontend/                # React + Vite frontend
-     ├── src/
-     │   ├── components/      # Reusable UI components
-     │   │   ├── Dashboard.jsx
-     │   │   ├── Login.jsx
-     │   │   ├── CreateAccount.jsx
-     │   ├── context/         # Shared state management
-     │   │   ├── TokenContext.jsx
-     │   │   └── UserContext.jsx
-     └── index.html
+  api/          → NestJS backend (Auth, Tasks, Users, Orgs)
+  dashboard/    → React frontend (Task board with filters, CRUD)
+libs/
+  auth/         → Shared RBAC guards & role constants
+  data/         → Shared DTOs & TypeScript interfaces
 ```
 
-### Rationale
-- **Nx** provides consistent tooling and shared TypeScript configuration for both apps.  
-- **NestJS** organizes the backend by feature (auth, user, task) for modularity.  
-- **React (Vite)** powers the frontend with a fast, modern build system.  
-- **SQLite** offers zero-setup persistence while using TypeORM to maintain production-ready structure.  
-- `npm start` runs both services concurrently for simple development flow.
+### 🎯 Why Nx
+Nx enables **modularity** and **type-safe sharing** between frontend and backend.  
+Each component is isolated but can reuse logic from shared libs, ensuring consistency in DTOs and authentication behavior.
 
 ---
 
-## Access Control Design & Data Models
+## 🔐 Access Control Design
 
-### Role Hierarchy
-| Role  | Level | Description |
-|-------|--------|-------------|
-| Owner | 3 | Full authority over the system and all users |
-| Admin | 2 | Manage users and tasks within their organization |
-| Viewer | 1 | Base role, limited to assigned or created tasks |
+### Roles & Permissions
 
-This numeric hierarchy allows higher roles to inherit lower-level permissions:  
-**Owner (3) > Admin (2) > Viewer (1)**
+| Role | Access Scope |
+|------|---------------|
+| **Viewer** | View tasks within own organization only |
+| **Admin**  | View/edit all tasks across all organizations |
+| **Owner**  | System-wide control (can delete users/orgs) |
 
-Role enforcement is centralized through a custom NestJS guard that compares the user’s role level against the required role level for each route.
+### Organization Hierarchy
+Two-tier structure:
+- Parent Organization
+- Multiple Child Organizations
 
-### Data Models
+Relationships:
+- `User → Organization` (many-to-one)  
+- `Organization → Task` (one-to-many)
+
+### Enforcement Logic (Backend)
+```ts
+if (['admin', 'owner'].includes(user.role)) {
+  return allTasks;
+}
+return tasks.filter(t => t.organization.id === user.organization.id);
+```
+
+### JWT Authentication
+1. Users log in at `/auth/login` with username/password.  
+2. Backend issues JWT signed with `JWT_SECRET`.  
+3. Frontend stores token in `localStorage`.  
+4. Each API call attaches:  
+   ```
+   Authorization: Bearer <token>
+   ```
+5. Backend validates token via NestJS `JwtAuthGuard`.
+
+---
+
+## 🧱 Data Models
+
+### Entity Diagram
+
+```
+User ───▶ Organization ───▶ Task
+  │                         │
+  └────── role (Viewer/Admin/Owner)
+```
+
+### Tables
 
 **User**
-- `id` (integer, PK)  
-- `username` (string)  
-- `password` (hashed)  
-- `role` (enum: viewer, admin, owner)
+| Field | Type | Description |
+|--------|------|-------------|
+| id | int | PK |
+| username | string | unique |
+| password | string | bcrypt-hashed |
+| role | enum | viewer/admin/owner |
+| organizationId | FK | reference to org |
+
+**Organization**
+| Field | Type | Description |
+|--------|------|-------------|
+| id | int | PK |
+| name | string | org name |
+| parentId | int (nullable) | parent org |
 
 **Task**
-- `id` (integer, PK)  
-- `title` (string)  
-- `description` (string)  
-- `createdBy` (foreign key → User)  
-- `assignedTo` (foreign key → User)
-
-Access control ensures only the task creator, assignee, or privileged roles (Admin/Owner) can modify tasks.
-
----
-
-## Sample API Requests & Responses
-
-**Authentication**
-- `POST /auth/signup` — Register a new user  
-- `POST /auth/login` — Return a JWT access token  
-
-**Users**
-- `GET /users` — List users (Admin/Owner only)  
-- `POST /users/promote` — Promote a user’s role  
-
-**Tasks**
-- `POST /tasks` — Create a new task  
-- `GET /tasks` — Fetch tasks accessible to the current user  
-- `PUT /tasks/:id` — Update if the user has ownership or elevated role  
-
-All protected routes require a valid JWT.
+| Field | Type | Description |
+|--------|------|-------------|
+| id | int | PK |
+| title | string | task title |
+| status | enum | ToDo/InProgress/Done |
+| assignedToId | FK | user |
+| organizationId | FK | org |
+| ownerId | FK | creator |
 
 ---
 
-## Future Enhancements
+## 🧠 Sample API
 
-**Security**
-- Add refresh tokens and token rotation  
-- Implement CSRF protection and rate limiting  
-- Integrate Helmet, stricter CORS, and request validation  
+### 🔹 Login
+**Request**
+```bash
+POST /auth/login
+Content-Type: application/json
+{
+  "username": "viewer",
+  "password": "password"
+}
+```
 
-**Scalability**
-- Migrate to PostgreSQL for production concurrency  
-- Cache RBAC checks and sessions with Redis  
-- Add audit logging for sensitive actions  
-
-**Extended Features**
-- Organization-level ownership and delegated roles  
-- Multi-tenant separation  
-- Frontend filtering, pagination, and user management enhancements  
+**Response**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+}
+```
 
 ---
 
-## Summary
+### 🔹 Get Tasks (Scoped)
+**Request**
+```bash
+GET /tasks
+Authorization: Bearer <token>
+```
 
-This project demonstrates:
-- Secure JWT authentication and hierarchical RBAC  
-- Clean Nx monorepo architecture for backend and frontend  
-- TypeORM integration with SQLite for simple persistence  
-- A functional React (Vite) frontend tied directly to a NestJS API  
-- A codebase designed for maintainability, scalability, and clarity
+**Response**
+```json
+[
+  {
+    "id": 1,
+    "title": "Review API security",
+    "status": "InProgress",
+    "assignedTo": { "username": "viewer" },
+    "organization": { "name": "OrgA" }
+  }
+]
+```
 
-Built to emphasize both **technical execution** and **architectural design quality** in a full-stack environment.
+---
+
+### 🔹 Create Task
+**Request**
+```bash
+POST /tasks
+Authorization: Bearer <token>
+Content-Type: application/json
+{
+  "title": "Design role guard",
+  "status": "ToDo",
+  "assignedToId": 3,
+  "organizationId": 2
+}
+```
+
+**Response**
+```json
+{
+  "id": 8,
+  "title": "Design role guard",
+  "status": "ToDo",
+  "organization": { "id": 2, "name": "OrgB" },
+  "assignedTo": { "id": 3, "username": "viewer" }
+}
+```
+
+---
+
+### 🔹 Audit Log (Owner/Admin only)
+**Request**
+```bash
+GET /audit-log
+Authorization: Bearer <token>
+```
+
+**Response**
+```json
+[
+  {
+    "timestamp": "2025-10-15T17:03:21Z",
+    "action": "DELETE /tasks/4",
+    "performedBy": "admin",
+    "result": "success"
+  }
+]
+```
+
+---
+
+## 💻 Frontend Highlights
+
+- React (Vite) SPA using Context API for auth state.  
+- Three task columns: **To Do / In Progress / Done**.  
+- Filter by Status, User, Organization.  
+- Inline editing + deletion (Admin/Owner only).  
+- “Welcome back, {username}” header after login.  
+
+---
+
+## 🧪 Testing
+
+### Backend
+- Unit tests with **Jest** for:
+  - JWT guard
+  - Role guard
+  - TaskService filtering
+  - CRUD endpoints
+
+### Frontend
+- Component tests for:
+  - Dashboard filters
+  - Add/Save workflow
+  - Auth persistence
+
+---
+
+## 🔮 Future Enhancements
+
+| Area | Enhancement |
+|-------|--------------|
+| **Security** | Add JWT refresh tokens · CSRF protection · Password reset flow |
+| **Scalability** | Switch to PostgreSQL + connection pooling · Caching layer for RBAC checks |
+| **UX/UI** | Drag-and-drop task ordering · Dark/light mode toggle |
+| **Analytics** | Org-level dashboards and completion metrics |
+| **Auditing** | Persistent audit logs and admin export |
+
+---
+
+## 🧑‍💻 Author
+**Jacob Korn**  
+Full-Stack Developer · Focused on secure, modular web systems

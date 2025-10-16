@@ -11,7 +11,7 @@ export class OrganizationController {
     private orgRepo: Repository<Organization>,
   ) {}
 
-  @UseGuards(JwtAuthGuard)
+  //@UseGuards(JwtAuthGuard)
   @Get()
   async getAll() {
     return this.orgRepo.find({

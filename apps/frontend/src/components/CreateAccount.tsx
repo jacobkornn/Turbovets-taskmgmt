@@ -1,12 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function CreateAccount() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [organization, setOrganization] = useState('');
+  const [organizations, setOrganizations] = useState<{ id: number; name: string }[]>([]);
   const [notification, setNotification] = useState<{ text: string; type: 'error' | 'success' } | null>(null);
   const navigate = useNavigate();
+
+  // ✅ Fetch organizations from backend
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('http://localhost:3000/api/organizations');
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setOrganizations(data);
+        }
+      } catch (e) {
+        console.error('Failed to load organizations', e);
+      }
+    })();
+  }, []);
 
   const handleCreate = async () => {
     if (password !== confirm) {
@@ -14,11 +31,19 @@ export default function CreateAccount() {
       return;
     }
 
+    // ✅ Default to Organization C if none selected
+    const selectedOrg =
+      organization || organizations.find(o => o.name.toLowerCase() === 'organization c')?.id || 3;
+
     try {
       const res = await fetch('http://localhost:3000/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username,
+          password,
+          organization: Number(selectedOrg),
+        }),
       });
 
       if (!res.ok) {
@@ -31,11 +56,21 @@ export default function CreateAccount() {
         return;
       }
 
-      // ✅ Success → Redirect to Login with success banner
       navigate('/', { state: { fromSignup: true } });
     } catch {
       setNotification({ text: 'Network error. Please try again.', type: 'error' });
     }
+  };
+
+  const inputStyle = {
+    width: '100%',
+    marginBottom: '1rem',
+    padding: '0.75rem',
+    borderRadius: '12px',
+    border: '1px solid #ccc',
+    outline: 'none',
+    fontSize: '1rem',
+    fontFamily: 'inherit' as const,
   };
 
   return (
@@ -53,7 +88,6 @@ export default function CreateAccount() {
         position: 'relative',
       }}
     >
-      {/* 🔔 Notification Banner */}
       {notification && (
         <div className={`notification ${notification.type}`}>{notification.text}</div>
       )}
@@ -85,16 +119,7 @@ export default function CreateAccount() {
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          style={{
-            width: '100%',
-            marginBottom: '1rem',
-            padding: '0.75rem',
-            borderRadius: '12px',
-            border: '1px solid #ccc',
-            outline: 'none',
-            fontSize: '1rem',
-            fontFamily: 'inherit',
-          }}
+          style={inputStyle}
         />
 
         <input
@@ -102,16 +127,7 @@ export default function CreateAccount() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          style={{
-            width: '100%',
-            marginBottom: '1rem',
-            padding: '0.75rem',
-            borderRadius: '12px',
-            border: '1px solid #ccc',
-            outline: 'none',
-            fontSize: '1rem',
-            fontFamily: 'inherit',
-          }}
+          style={inputStyle}
         />
 
         <input
@@ -119,17 +135,22 @@ export default function CreateAccount() {
           type="password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
-          style={{
-            width: '100%',
-            marginBottom: '1.5rem',
-            padding: '0.75rem',
-            borderRadius: '12px',
-            border: '1px solid #ccc',
-            outline: 'none',
-            fontSize: '1rem',
-            fontFamily: 'inherit',
-          }}
+          style={inputStyle}
         />
+
+        {/* ✅ Dynamic Organization Dropdown */}
+        <select
+          value={organization}
+          onChange={(e) => setOrganization(e.target.value)}
+          style={inputStyle}
+        >
+          <option value="">Select Organization</option>
+          {organizations.map((org) => (
+            <option key={org.id} value={org.id}>
+              {org.name}
+            </option>
+          ))}
+        </select>
 
         <button
           onClick={handleCreate}
@@ -146,6 +167,24 @@ export default function CreateAccount() {
           }}
         >
           Create Account
+        </button>
+
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            marginTop: '1rem',
+            width: '100%',
+            padding: '0.75rem',
+            backgroundColor: '#f2f2f7',
+            color: '#333',
+            border: '1px solid #ccc',
+            borderRadius: '12px',
+            fontSize: '1rem',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          Cancel
         </button>
       </div>
     </div>

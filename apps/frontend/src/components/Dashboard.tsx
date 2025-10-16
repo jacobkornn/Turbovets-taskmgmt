@@ -527,7 +527,6 @@ export default function Dashboard() {
                         </h4>
                         <p>Status: {task.status}</p>
                         <p>Assigned to: {task.assignedTo?.username ?? 'Unassigned'}</p>
-                        <p>Organization: {task.organization?.name ?? '—'}</p>
                       </>
                     )}
                   </div>

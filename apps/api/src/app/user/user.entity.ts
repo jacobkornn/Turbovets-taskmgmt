@@ -4,8 +4,8 @@ import {
   Column,
   ManyToOne,
   OneToMany,
+  JoinColumn, // ✅ add this
 } from 'typeorm';
-// import { Organization } from '../organization/organization.entity';
 import { Task } from '../task/task.entity';
 import { Organization } from '../organization/organization.entity';
 
@@ -15,7 +15,7 @@ export enum UserRole {
   OWNER = 'owner',
 }
 
-@Entity('users') 
+@Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
@@ -33,13 +33,13 @@ export class User {
   })
   role: UserRole;
 
-  @OneToMany(() => Task, task => task.owner)
+  @OneToMany(() => Task, (task) => task.owner)
   tasksOwned: Task[];
 
-  @OneToMany(() => Task, task => task.assignedTo)
+  @OneToMany(() => Task, (task) => task.assignedTo)
   tasksAssigned: Task[];
-  
-  @ManyToOne(() => Organization, (org) => org.users, { nullable: true, eager: true })
-  organization?: Organization;
 
+  @ManyToOne(() => Organization, (org) => org.users, { nullable: true, eager: true })
+  @JoinColumn({ name: 'organizationId' })
+  organization?: Organization;
 }
