@@ -2,6 +2,9 @@ import {
   Controller,
   Post,
   Get,
+  Put,
+  Delete,
+  Param,
   Body,
   UseGuards,
   Req,
@@ -33,5 +36,21 @@ export class TaskController {
     const user = await this.usersService.findById(req.user.sub);
     if (!user) throw new UnauthorizedException('User not found');
     return this.taskService.createTask(dto, user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(':id')
+  async update(@Param('id') id: number, @Body() dto: Partial<CreateTaskDto>, @Req() req) {
+    const user = await this.usersService.findById(req.user.sub);
+    if (!user) throw new UnauthorizedException('User not found');
+    return this.taskService.updateTask(id, dto, user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async delete(@Param('id') id: number, @Req() req) {
+    const user = await this.usersService.findById(req.user.sub);
+    if (!user) throw new UnauthorizedException('User not found');
+    return this.taskService.deleteTask(id, user);
   }
 }

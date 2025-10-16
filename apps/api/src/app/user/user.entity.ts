@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 // import { Organization } from '../organization/organization.entity';
 import { Task } from '../task/task.entity';
+import { Organization } from '../organization/organization.entity';
 
 export enum UserRole {
   VIEWER = 'viewer',
@@ -32,12 +33,13 @@ export class User {
   })
   role: UserRole;
 
-  // @ManyToOne(() => Organization, org => org.users)
-  // organization: Organization;
-
   @OneToMany(() => Task, task => task.owner)
   tasksOwned: Task[];
 
   @OneToMany(() => Task, task => task.assignedTo)
   tasksAssigned: Task[];
+  
+  @ManyToOne(() => Organization, (org) => org.users, { nullable: true, eager: true })
+  organization?: Organization;
+
 }

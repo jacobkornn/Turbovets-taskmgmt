@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../user/user.entity';
-//import { Organization } from '../organization/organization.entity';
+import { Organization } from '../organization/organization.entity';
 
 export type TaskStatus = 'todo' | 'in-progress' | 'done' | 'blocked';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
@@ -41,8 +41,8 @@ export class Task {
   @ManyToOne(() => User)
   owner: User;
 
-//   @ManyToOne(() => Organization)
-//   organization: Organization;
+  @ManyToOne(() => Organization, (org) => org.tasks, { nullable: true })
+  organization?: Organization;
 
   @CreateDateColumn()
   createdAt: Date;

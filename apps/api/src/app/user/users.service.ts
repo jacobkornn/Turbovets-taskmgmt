@@ -11,19 +11,25 @@ export class UsersService {
     private readonly userRepo: Repository<User>,
   ) {}
 
-  async findAll(): Promise<Pick<User, 'id' | 'username' | 'role'>[]> {
+  async findAll(): Promise<User[]> {
     return this.userRepo.find({
-      select: ['id', 'username', 'role'],
+      relations: ['organization'], 
       order: { id: 'ASC' },
     });
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    return this.userRepo.findOne({ where: { username } });
+    return this.userRepo.findOne({
+      where: { username },
+      relations: ['organization'],
+    });
   }
 
   async findById(id: number): Promise<User | null> {
-    return this.userRepo.findOne({ where: { id } });
+    return this.userRepo.findOne({
+      where: { id },
+      relations: ['organization'],
+    });
   }
 
   async create(user: { username: string; password: string; role?: string }) {
@@ -38,7 +44,6 @@ export class UsersService {
     const newUser = this.userRepo.create({
       username: user.username,
       password: hashedPassword,
-      // force default to viewer unless explicitly admin or owner
       role:
         roleLower === 'owner'
           ? UserRole.OWNER
@@ -48,7 +53,10 @@ export class UsersService {
     });
 
     const saved = await this.userRepo.save(newUser);
-    return { id: saved.id, username: saved.username, role: saved.role };
+    return this.userRepo.findOne({
+      where: { id: saved.id },
+      relations: ['organization'],
+    });
   }
 
   async promoteRole(id: number, role: string) {
@@ -64,6 +72,9 @@ export class UsersService {
         : UserRole.VIEWER;
 
     const saved = await this.userRepo.save(user);
-    return { id: saved.id, username: saved.username, role: saved.role };
+    return this.userRepo.findOne({
+      where: { id: saved.id },
+      relations: ['organization'], // ✅ again, consistent response
+    });
   }
 }

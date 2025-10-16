@@ -8,9 +8,12 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './user/users.module';
 import { TaskModule } from './task/task.module';
+import { OrganizationModule } from './organization/organization.module';
 
 import { User } from './user/user.entity';
 import { Task } from './task/task.entity';
+import { Organization } from './organization/organization.entity';
+import { OrganizationController } from './organization/organization.controller';
 
 @Module({
   imports: [
@@ -18,14 +21,15 @@ import { Task } from './task/task.entity';
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: 'db.sqlite',
-      entities: [User, Task],
+      entities: [User, Task, Organization],
       synchronize: true,
     }),
     AuthModule,
     UsersModule,
     TaskModule,
+    OrganizationModule
   ],
-  controllers: [AppController],
+  controllers: [AppController, OrganizationController],
   providers: [AppService],
 })
 export class AppModule {}

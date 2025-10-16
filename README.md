@@ -48,6 +48,9 @@ apps/
      │   │   ├── Dashboard.jsx
      │   │   ├── Login.jsx
      │   │   ├── CreateAccount.jsx
+     │   ├── context/         # Shared state management
+     │   │   ├── TokenContext.jsx
+     │   │   └── UserContext.jsx
      └── index.html
 ```
 

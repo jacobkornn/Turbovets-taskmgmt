@@ -1,9 +1,15 @@
 import { createContext, useContext, useState } from 'react';
 
+type Organization = {
+  id: number;
+  name: string;
+};
+
 type User = {
   id: number;
   username: string;
   role: string;
+  organization?: Organization | null;
 } | null;
 
 type UserContextType = {
